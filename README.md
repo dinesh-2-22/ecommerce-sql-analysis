@@ -22,9 +22,8 @@ Tables Used:
 2. Revenue trend analysis
 3. Payment method contribution
 4. Top spending customers
-5. Customer segmentation (Gold / Silver / Bronze)
-6. Customer value segmentation (High / Medium / Low)
-7. One-time vs Repeat customers
+5. Customer value segmentation (High / Medium / Low)
+6. One-time vs Repeat customers
 
 ---
 
