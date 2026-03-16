@@ -174,7 +174,7 @@ After completing SQL analysis, the processed dataset was imported into **Power B
 
 ## Dashboard Preview
 
-![Dashboard](dashboard.png)
+![Dashboard]("D:\data sets ml\ecommerce_project\ecommerce_sql_project\Ecommerce_customer_segmentation_dashboard.pbix")
 
 ---
 
