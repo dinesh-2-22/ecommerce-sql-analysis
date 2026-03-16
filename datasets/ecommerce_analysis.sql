@@ -8,6 +8,10 @@ FROM olist_orders_dataset;
 select count(*)
 from olist_order_payments_dataset;
 
+ 
+select round(sum(payment_value),2) as total_revenue 
+from olist_order_payments_dataset;
+ 
 SELECT
     YEAR(o.order_purchase_timestamp) AS year,
     ROUND(SUM(p.payment_value),2) AS revenue
@@ -63,87 +67,85 @@ FROM payment_per_order
 ORDER BY total_payment DESC
 LIMIT 10;
 
-WITH customer_spending AS (
-    SELECT
-        o.customer_id,
-        SUM(p.payment_value) AS total_spent
-    FROM olist_orders_dataset o
-    JOIN olist_order_payments_dataset p
-        ON o.order_id = p.order_id
-    GROUP BY o.customer_id
-)
-SELECT
-    CASE
-        WHEN total_spent >= 5000 THEN 'High Value'
-        WHEN total_spent >= 1000 THEN 'Medium Value'
-        ELSE 'Low Value'
-    END AS customer_segment,
-    COUNT(*) AS customers,
-    ROUND(AVG(total_spent),2) AS avg_spent
-FROM customer_spending
-GROUP BY customer_segment
-ORDER BY avg_spent DESC;
 
-WITH customer_spending AS (
-    SELECT
-        o.customer_id,
-        SUM(p.payment_value) AS total_spent
-    FROM olist_orders_dataset o
-    JOIN olist_order_payments_dataset p
-        ON o.order_id = p.order_id
-    GROUP BY o.customer_id
+select payment_type , round(sum(payment_value),2)as revenue 
+from olist_order_payments_dataset
+group by payment_type
+order by revenue desc;
+
+
+WITH rfm AS (
+SELECT
+o.customer_id,
+
+DATEDIFF(
+(SELECT MAX(order_purchase_timestamp) FROM olist_orders_dataset),
+MAX(o.order_purchase_timestamp)
+) AS recency,
+
+COUNT(DISTINCT o.order_id) AS frequency,
+
+SUM(p.payment_value) AS monetary
+
+FROM olist_orders_dataset o
+JOIN olist_order_payments_dataset p
+ON o.order_id = p.order_id
+
+GROUP BY o.customer_id
 )
 
+SELECT *,
+CASE
+WHEN monetary >= 2000 THEN 'High Value'
+WHEN monetary >= 500 THEN 'Medium Value'
+ELSE 'Low Value'
+END AS customer_segment
+FROM rfm;
+
+WITH rfm AS (
 SELECT
-    CASE
-        WHEN total_spent >= 5000 THEN 'High Value'
-        WHEN total_spent >= 1000 THEN 'Medium Value'
-        ELSE 'Low Value'
-    END AS customer_segment,
-    COUNT(*) AS customers,
-    ROUND(AVG(total_spent),2) AS avg_spent
-FROM customer_spending
-GROUP BY customer_segment
-ORDER BY avg_spent DESC; WITH customer_spending AS (
-    SELECT
-        o.customer_id,
-        SUM(p.payment_value) AS total_spent
-    FROM olist_orders_dataset o
-    JOIN olist_order_payments_dataset p
-        ON o.order_id = p.order_id
-    GROUP BY o.customer_id
+o.customer_id,
+DATEDIFF(
+(SELECT MAX(order_purchase_timestamp) FROM olist_orders_dataset),
+MAX(o.order_purchase_timestamp)
+) AS recency,
+COUNT(DISTINCT o.order_id) AS frequency,
+SUM(p.payment_value) AS monetary
+FROM olist_orders_dataset o
+JOIN olist_order_payments_dataset p
+ON o.order_id = p.order_id
+GROUP BY o.customer_id
 )
 
-SELECT
-    CASE
-        WHEN total_spent >= 5000 THEN 'High Value'
-        WHEN total_spent >= 1000 THEN 'Medium Value'
-        ELSE 'Low Value'
-    END AS customer_segment,
-    COUNT(*) AS customers,
-    ROUND(AVG(total_spent),2) AS avg_spent
-FROM customer_spending
-GROUP BY customer_segment
-ORDER BY avg_spent DESC;
+SELECT *,
+ROW_NUMBER() OVER (ORDER BY monetary DESC) AS customer_rank
+FROM rfm;
 
-WITH customer_spending AS (
-    SELECT
-        o.customer_id,
-        SUM(p.payment_value) AS total_spent
-    FROM olist_orders_dataset o
-    JOIN olist_order_payments_dataset p
-        ON o.order_id = p.order_id
-    GROUP BY o.customer_id
+WITH rfm AS (
+SELECT
+o.customer_id,
+DATEDIFF(
+(SELECT MAX(order_purchase_timestamp) FROM olist_orders_dataset),
+MAX(o.order_purchase_timestamp)
+) AS recency,
+COUNT(DISTINCT o.order_id) AS frequency,
+SUM(p.payment_value) AS monetary
+FROM olist_orders_dataset o
+JOIN olist_order_payments_dataset p
+ON o.order_id = p.order_id
+GROUP BY o.customer_id
+),
+
+ranked AS (
+SELECT *,
+NTILE(10) OVER (ORDER BY monetary DESC) AS percentile_rank
+FROM rfm
 )
 
-SELECT
-    CASE
-        WHEN total_spent >= 5000 THEN 'High Value'
-        WHEN total_spent >= 1000 THEN 'Medium Value'
-        ELSE 'Low Value'
-    END AS customer_segment,
-    COUNT(*) AS customers,
-    ROUND(AVG(total_spent),2) AS avg_spent
-FROM customer_spending
-GROUP BY customer_segment
-ORDER BY avg_spent DESC;  
+SELECT *,
+CASE
+WHEN percentile_rank <= 2 THEN 'High Value'
+WHEN percentile_rank <= 5 THEN 'Medium Value'
+ELSE 'Low Value'
+END AS customer_segment
+FROM ranked;
